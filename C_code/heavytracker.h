@@ -1,3 +1,6 @@
+#ifndef HEAVYTRACKER_H
+#define HEAVYTRACKER_H
+
 #include <stdbool.h>
 
 typedef struct {
@@ -19,3 +22,5 @@ bool HeavyTracker(char *pl, double b_hk,double b,  double c, double q, double ga
 void print_contatori(Tracker_unit *tk);
 void Tracker_unit_free(Tracker_unit *tk);
 Tracker_unit * tracker_unit_Init(unsigned int m, unsigned int d);
+
+#endif

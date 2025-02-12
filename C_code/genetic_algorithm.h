@@ -34,7 +34,7 @@ typedef struct {
 Conteggio* frequenza_reale(int m);
 double calcola_fitness(unsigned int *cromosoma, int k, Popolazione * p, Conteggio *c);
 Popolazione* inizializza_popolazione();
-Parametri* decodifica_cromosoma(unsigned int *cromosoma);
+Parametri* decodifica_cromosoma(const unsigned int *cromosoma);
 void free_popolazione(Popolazione *popolazione);
 void crossover(Popolazione *popolazione);
 void mutazione(Popolazione *popolazione);

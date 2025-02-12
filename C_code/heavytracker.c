@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "xxhash.h"
-#include "genetic_algorithm.h"
 
 /*
  *----------------------------------------hash_function()---------------------------------------------/

@@ -8,6 +8,10 @@
 
 #include <math.h>
 
+/* Il puntatore alla struttura Conteggio lo inizializzo a livello globale altrimenti non riesco a liberare la
+memoria allocata nel momento in cui falliscono le altre funzioni presenti nell'algoritmo genetico */
+static Conteggio* cont = NULL;
+
 /*
  * ----------------------------------------print_popolazione()---------------------------------------------/
  * Funzione che prende in input la popolazione e ne stampa in output i cromosomi che la compongono.
@@ -88,7 +92,7 @@ Popolazione * inizializza_popolazione() {
 */
 void free_popolazione(Popolazione* popolazione) {
 
-    if (popolazione == NULL) {
+    if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione NULL\n");
         exit(EXIT_FAILURE);
     }
@@ -101,7 +105,7 @@ void free_popolazione(Popolazione* popolazione) {
     free(popolazione);
 }
 
-int binary_to_decimal (unsigned int *array) {
+int binary_to_decimal (const unsigned int *array) {
     int value = 0;
     for (int i = (SIZE_CROMOSOMA/4)-1; i > -1; i--) {
         value = value + (int)array[i] * (int)pow(2, (i));
@@ -123,7 +127,7 @@ int binary_to_decimal (unsigned int *array) {
  * La funzione binary_to_decimal() permette di effettuare la conversione da binario a decimale.
  * --------------------------------------------------------------------------------------------------------/
 */
-Parametri* decodifica_cromosoma(unsigned int *cromosoma) {
+Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
 
     int size = SIZE_CROMOSOMA/4;
     double b, q, gamma = 0.0, c;
@@ -198,9 +202,10 @@ Conteggio* frequenza_reale(int m) {
         exit(EXIT_FAILURE);
     }
 
-    Conteggio* cont = (Conteggio*)malloc(m * sizeof(Conteggio));
+    cont = (Conteggio*)malloc(m * sizeof(Conteggio));
     if (cont == NULL) {
         printf("Malloc fallita");
+        fclose(file);
         exit(EXIT_FAILURE);
     }
 
@@ -293,7 +298,7 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
         exit(EXIT_FAILURE);
     }
 
-    if (popolazione == NULL) {
+    if (popolazione == NULL || popolazione->fitness == NULL || popolazione->popolazione == NULL)  {
         Tracker_unit_free(tracker);
         free(conteggio);
         printf("La struct popolazione è vuota");
@@ -371,7 +376,12 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
 */
 Popolazione* SUS(Popolazione* popolazione) {
 
-    Popolazione * new_popol = inizializza_popolazione();
+    Popolazione * popol_temp = inizializza_popolazione();
+    if (popolazione == NULL) {
+        printf("Popolazione vuota!! \n");
+        free(cont);
+        exit(EXIT_FAILURE);
+    }
 
 
     double total_fitness = 0;
@@ -392,7 +402,7 @@ Popolazione* SUS(Popolazione* popolazione) {
     while (i < SIZE_POPOLAZIONE) {
         if (r < fabs(popolazione->fitness[i])) {
             for (int j = 0; j < SIZE_CROMOSOMA; j++) {
-                new_popol->popolazione[i][j] = popolazione->popolazione[i][j];
+                popol_temp->popolazione[i][j] = popolazione->popolazione[i][j];
             }
             r = r + intervallo;
         }
@@ -401,8 +411,14 @@ Popolazione* SUS(Popolazione* popolazione) {
         }
     }
 
-    free_popolazione(popolazione);
-    return new_popol;
+    // Copio la popolazione temporanea nella popolazione originale.
+    for (int k = 0; k < SIZE_POPOLAZIONE; k++) {
+        for (int j = 0; j < SIZE_CROMOSOMA; j++) {
+            popolazione->popolazione[k][j] = popol_temp->popolazione[k][j];
+        }
+    }
+    free_popolazione(popol_temp);
+    return popolazione;
 }
 
 /*
@@ -437,8 +453,9 @@ void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int en
 */
 void crossover(Popolazione* popolazione) {
 
-    if (popolazione == NULL) {
+    if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione non trovata");
+        free(cont);
         exit(EXIT_FAILURE);
     }
 
@@ -447,17 +464,19 @@ void crossover(Popolazione* popolazione) {
     unsigned int *cromosoma1 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma1 == NULL) {
         printf("Malloc fallita");
+        free(cont);
         exit(EXIT_FAILURE);
     }
 
     unsigned int *cromosoma2 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma2 == NULL) {
         printf("Malloc fallita");
+        free(cont);
         exit(EXIT_FAILURE);
     }
 
     for (int i = 0; i < SIZE_POPOLAZIONE; i++) {
-        if ((rand() / (float)RAND_MAX) < P_CROSSOVER) {   // Con P_CROSSOVER = 0.7
+        if (((float)rand() / (float)RAND_MAX) < P_CROSSOVER) {   // Con P_CROSSOVER = 0.7
             if (p == 0) { // Se p == 0 allora dobbiamo prendere ancora il primo cromosoma
                 for (int j = 0; j < SIZE_CROMOSOMA; j++) {
                     cromosoma1[j] = popolazione->popolazione[i][j];
@@ -474,7 +493,7 @@ void crossover(Popolazione* popolazione) {
                 // Qui dentro faccio lo swap delle 2 righe
                 int index[2]; // L'array index contiene i valori di start ed end.
                 for (int j = 0; j < 2; j++) {
-                    int random_number = (rand() / (float)RAND_MAX) * (SIZE_CROMOSOMA - 1);
+                    int random_number = (int)(((float)rand() / (float)RAND_MAX) * (float)(SIZE_CROMOSOMA - 1));
                     index[j] = random_number;
                 }
 
@@ -508,14 +527,15 @@ void crossover(Popolazione* popolazione) {
  * --------------------------------------------------------------------------------------------------------/
 */
 void mutazione(Popolazione *popolazione) {
-    if (popolazione == NULL) {
+    if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione vuota");
+        free(cont);
         exit(EXIT_FAILURE);
     }
 
     for (int i = 0; i < SIZE_POPOLAZIONE; i++) {
         for (int j = 0; j < SIZE_CROMOSOMA; j++) {
-            if ((rand() / (float)RAND_MAX) < (float) 1/SIZE_CROMOSOMA ) {
+            if (((float)rand() / (float)RAND_MAX) < (float) 1/SIZE_CROMOSOMA ) {
                 if (popolazione->popolazione[i][j] == 0) {
                     popolazione->popolazione[i][j] = 1;
                 }
