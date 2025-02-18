@@ -1,16 +1,12 @@
 #include "genetic_algorithm.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "heavytracker.h"
 #include "xxhash.h"
 #include <string.h>
-
 #include <math.h>
 
-/* Il puntatore alla struttura Conteggio lo inizializzo a livello globale altrimenti non riesco a liberare la
-memoria allocata nel momento in cui falliscono le altre funzioni presenti nell'algoritmo genetico */
-static Conteggio* cont = NULL;
+Tracker_unit * tk_reale = NULL;
 
 /*
  * ----------------------------------------print_popolazione()---------------------------------------------/
@@ -195,27 +191,27 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
  * codice.
  * --------------------------------------------------------------------------------------------------------/
 */
-Conteggio* frequenza_reale(int m) {
-    FILE *file = fopen("/Users/francescoschirinzi/Documents/Università/Magistrale/Data_Mining/Progetto/HeavyTracker/Indirizzi_IP.txt", "r");
+Tracker_unit* frequenza_reale(int m) {
+    FILE *file = fopen(PATH_FILE_GA, "r");
     if (file == NULL) {
         printf("File non trovato");
         exit(EXIT_FAILURE);
     }
 
-    cont = (Conteggio*)malloc(m * sizeof(Conteggio));
+    Conteggio* cont = (Conteggio*)malloc(m * sizeof(Conteggio));
     if (cont == NULL) {
         printf("Malloc fallita");
         fclose(file);
         exit(EXIT_FAILURE);
     }
 
-    char stream [1024];
+    char stream [2048];
     int n = m; // La variabile n viene utilizzata per reallocare più memoria se il numero di FPi distinti è > m.
     int visitato = 0;  // Tiene conto del numero di elementi distinti visitati fino a quel momento.
-    while (fgets(stream, 1024, file)) {
-        size_t len = strlen(stream);
+    while (fgets(stream, 2048, file)) {
+        char *flusso = strtok(stream, ",");
         // Per ogni elemento dello stream calcoliamo FPi e bucket tramite la f. hash XXH64.
-        unsigned int FPi = XXH64(stream, len , SEED_HASH);
+        unsigned int FPi = XXH64(flusso, strlen(flusso) , SEED_HASH);
         unsigned int bucket = FPi % m;
 
         int count = 0;   // Tiene conto se sono entrato nel ciclo if o no
@@ -229,7 +225,7 @@ Conteggio* frequenza_reale(int m) {
         }
         /* Se la variabile count è = 0 allora non siamo entrati nel ciclo if precedente e dunque il flusso FPi non è
          *  ancora presente nella struttura Conteggio
-        */
+         */
 
         if (count == 0) {
             // Se visitato < n allora non c'è bisogno di reallocare la memoria e inseriamo il flusso FPi nella struttura
@@ -262,9 +258,46 @@ Conteggio* frequenza_reale(int m) {
         cont[i].size_array = visitato;
     }
 
-    fclose(file);
+    tk_reale = tracker_unit_Init(COLONNE_TRACKER, 1);
+    if (tk_reale == NULL) {
+        free(cont);
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
 
-    return cont;
+    /*
+     * Come viene creato il Tracker che contiene i conteggi reali?
+     * Ricordo che per costruzione ogni flusso presente nella struct Conteggio è univoco e contiene la frequenza ad esso
+     * associata e il bucket del Tracker in cui è mappato.
+     * Per ogni flusso presente in Conteggio vediamo se il contatore FPr della tracker unit in cui è mappato è vuoto e in,
+     * caso di esito positivo, andiamo a monitorare quel flusso in quel bucket.
+     * Altrimenti vediamo se il contatore FPa è vuoto, se lo è andiamo a mappare il flusso in quel contatore, altrimenti
+     * vediamo se la frequenza presente in Ca è minore rispetto a quella del nuovo flusso che stiamo monitorando e in caso
+     * di esito positivo andiamo a monitorare quel nuovo flusso in Ca e FPa.
+     * Così facendo il nostro tracker ideale conterrà per ogni bucket solo i 2 flussi più frequenti che sono stati mappati
+     * in quella tracker unit.
+     * Infine se Ca > Cr andiamo a fare lo swap di FPa e FPr e Ca e Cr poichè, così come fatto nella mod-A di HeavyTracker,
+     * vogliamo che FPr contenga il flusso più frequente della tracker unit.
+     */
+    for (int i = 0; i < cont[0].size_array; i++) {
+        if (tk_reale->Cr[0][cont[i].bucket] == 0){
+            tk_reale->FPr[0][cont[i].bucket] = cont[i].FPi;
+            tk_reale->Cr[0][cont[i].bucket] = cont[i].frequenza;
+        }
+        else if (tk_reale->Ca[0][cont[i].bucket] == 0 || tk_reale->Ca[0][cont[i].bucket] < cont[i].frequenza) {
+            tk_reale->FPa[0][cont[i].bucket] = cont[i].FPi;
+            tk_reale->Ca[0][cont[i].bucket] = cont[i].frequenza;
+        }
+        if (tk_reale->Ca[0][cont[i].bucket] > tk_reale->Cr[0][cont[i].bucket]) {
+            swap_f(tk_reale, cont[i].bucket, 0);
+            swap_c(tk_reale, cont[i].bucket, 0);
+        }
+    }
+
+    fclose(file);
+    free(cont);
+
+    return tk_reale;
 }
 
 /*
@@ -280,37 +313,38 @@ Conteggio* frequenza_reale(int m) {
  * andiamo a contenere il valore di fitness del k-esimo cromosoma.
  * --------------------------------------------------------------------------------------------------------/
 */
-double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione, Conteggio *conteggio) {
+double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione, Tracker_unit* tk_reale) {
 
-    Tracker_unit * tracker = tracker_unit_Init(COLONNE_TRACKER,RIGHE_TRACKER);
+    // Questo tracker contiene i conteggi stimati dall'algoritmo HeavyTracker.
+    Tracker_unit * tracker = tracker_unit_Init(COLONNE_TRACKER,1);
 
     if (tracker == NULL) {
         printf("Il tracker unit è vuoto\n");
         free_popolazione(popolazione);
-        free(conteggio);
+        Tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
-    if (conteggio == NULL) {
+    if (tk_reale == NULL) {
         free_popolazione(popolazione);
         Tracker_unit_free(tracker);
-        printf("La struct conteggio è vuota \n");
+        printf("La struct Tracker_reale è vuota \n");
         exit(EXIT_FAILURE);
     }
 
     if (popolazione == NULL || popolazione->fitness == NULL || popolazione->popolazione == NULL)  {
         Tracker_unit_free(tracker);
-        free(conteggio);
+        Tracker_unit_free(tk_reale);
         printf("La struct popolazione è vuota");
         exit(EXIT_FAILURE);
     }
 
     Parametri * parametri = decodifica_cromosoma(cromosoma);
     // I parametri estratti dal cromosoma saranno mandati in input all'algoritmo heavy tracker.
-    FILE *file = fopen("/Users/francescoschirinzi/Documents/Università/Magistrale/Data_Mining/Progetto/HeavyTracker/Indirizzi_IP.txt", "r");
+    FILE *file = fopen(PATH_FILE_GA, "r");
     if (file == NULL) {
         Tracker_unit_free(tracker);
-        free(conteggio);
+        Tracker_unit_free(tk_reale);
         free_popolazione(popolazione);
         free(parametri);
         printf("File non trovato");
@@ -318,34 +352,28 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
     }
 
 
-    char stream [1024];
+    char stream [2048];
     /* Prendiamo una soglia molto grande poichè non vogliamo che si passi alla modalità B altrimenti molti conteggi
     vengono persi*/
     double t = 3000000000000.0;
 
-    while (fgets(stream, 1024, file)) {
-        HeavyTracker(stream, parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, t, tracker);
+    // Analizziamo il flusso e stimiamo i conteggi dei flussi più frequenti.
+    while (fgets(stream, 2048, file)) {
+        char *flusso = strtok(stream, ",");
+        HeavyTracker(flusso, parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, t, tracker);
     }
 
-    // Ora bisogna trovare l'errore associato
     int errore = 0;
 
     /* Viene presa la riga 0 poichè nell'algoritmo genetico per semplicità stiamo assumendo che il tracker abbia solo
     una riga*/
-    for (int i = 0; i < conteggio[0].size_array; i++) {
-        if (tracker->FPr[0][conteggio[i].bucket] == conteggio[i].FPi) {
-            errore = errore +  abs(conteggio[i].frequenza - tracker->Cr[0][conteggio[i].bucket]);
-        }
-        else if (tracker->FPa[0][conteggio[i].bucket] == conteggio[i].FPi) {
-            errore = errore +  abs(conteggio[i].frequenza - tracker->Ca[0][conteggio[i].bucket]);
-        }
-        else {
-            // In questo caso andiamo a dare come errore la frequenza per intero poichè quel pacchetto non è proprio presente nei contatori
-            errore = errore + conteggio[i].frequenza;
-        }
+    for (int i = 0; i < COLONNE_TRACKER; i++) {
+        errore = errore + abs(tk_reale->Cr[0][i] - tracker->Cr[0][i]);
+        errore = errore + abs(tk_reale->Ca[0][i] - tracker->Ca[0][i]);
     }
 
-    double fitness =  - (double) errore;
+    double fitness =  - (double) errore / COLONNE_TRACKER;
+
 
     popolazione->fitness[k] = fitness;   // Salva il fitness del k-esimo cromosoma
 
@@ -379,7 +407,7 @@ Popolazione* SUS(Popolazione* popolazione) {
     Popolazione * popol_temp = inizializza_popolazione();
     if (popolazione == NULL) {
         printf("Popolazione vuota!! \n");
-        free(cont);
+        Tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -455,7 +483,7 @@ void crossover(Popolazione* popolazione) {
 
     if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione non trovata");
-        free(cont);
+        Tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -464,14 +492,14 @@ void crossover(Popolazione* popolazione) {
     unsigned int *cromosoma1 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma1 == NULL) {
         printf("Malloc fallita");
-        free(cont);
+        Tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
     unsigned int *cromosoma2 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma2 == NULL) {
         printf("Malloc fallita");
-        free(cont);
+        Tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -529,7 +557,7 @@ void crossover(Popolazione* popolazione) {
 void mutazione(Popolazione *popolazione) {
     if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione vuota");
-        free(cont);
+        Tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -573,14 +601,13 @@ Parametri* genetic_algotithm() {
     Popolazione* popolazione = inizializza_popolazione();
 
     // Calcolo per ogni FPi la sua frequenza reale.
-    Conteggio *conteggio = frequenza_reale(COLONNE_TRACKER);
+    Tracker_unit* tk_reale = frequenza_reale(COLONNE_TRACKER);
 
     unsigned int cromosma[SIZE_CROMOSOMA];
     unsigned int best_cromosoma[SIZE_CROMOSOMA];
     double fitness_best = -1000000;
     double fitness = 0;
     int k = 0;
-
 
     // In media riesco a trovare una soluzione accettabile già dopo 25/50 iterazioni(Vedere documentazione)
     while (k < 25) {
@@ -592,7 +619,7 @@ Parametri* genetic_algotithm() {
                 cromosma[j] = popolazione->popolazione[i][j];
             }
             // Calcolo il fitness per quel cromosoma
-            fitness = calcola_fitness(cromosma, i, popolazione, conteggio);
+            fitness = calcola_fitness(cromosma, i, popolazione, tk_reale);
 
             // Se il fitness trovato è migliore del precedente aggiorniamo il nuovo fitness e teniamo traccia del cromosoma che ha quel fitness
             if (fitness > fitness_best) {
@@ -617,7 +644,7 @@ Parametri* genetic_algotithm() {
     Parametri *parametri = decodifica_cromosoma(best_cromosoma);
 
     free_popolazione(popolazione);
-    free(conteggio);
+    Tracker_unit_free(tk_reale);
 
     return parametri;
 }

@@ -333,7 +333,7 @@ void print_contatori(Tracker_unit *tk) {
                 printf("%d ", tk->FPr[j][k]);
             }
             printf("\n");
-            printf("Pa: ");
+            printf("FPa: ");
             for (int k = 0; k < tk->m; k++) {
                 printf("%d ", tk->FPa[j][k]);
             }

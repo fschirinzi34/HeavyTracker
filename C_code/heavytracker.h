@@ -22,5 +22,7 @@ bool HeavyTracker(char *pl, double b_hk,double b,  double c, double q, double ga
 void print_contatori(Tracker_unit *tk);
 void Tracker_unit_free(Tracker_unit *tk);
 Tracker_unit * tracker_unit_Init(unsigned int m, unsigned int d);
+void swap_f(Tracker_unit * tk, unsigned int bucket, int j);
+void swap_c(Tracker_unit * tk, unsigned int bucket, int j);
 
 #endif
