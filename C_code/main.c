@@ -5,12 +5,6 @@
 #include "genetic_algorithm.h"
 #include "heavytracker.h"
 
-
-/*
- * Fare funzione che prende in input il file di output dell'algoritmo heavy_tracker e restituisce solo elementi
- * univoci per vedere solo quali sono i flussi elefantici.
- */
-
 /*
  * -------------------------------------------main()---------------------------------------------------/
  * In questa sezione andiamo a simulare l'esecuzione degli algoritmi genetic_algoritmh e heavytracker.

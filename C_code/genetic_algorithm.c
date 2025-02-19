@@ -183,12 +183,12 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
 /*
  * ----------------------------------------frequenza_reale()----------------------------------------------/
  * Funzione che prende in input il numero di tracker unit per livello
- * Apriamo il file che contiene lo stream di pacchetti e analizziamo riga per riga. Ogni riga contiene
- * un pacchetto <indirizzpIP:Porta>.
- * Mappiamo ogni pacchettto ricavato dal file un un flusso FPi e medianto il %m ci ricaviamo anche il
- * bucket in cui è mappato; L'algoritmo resituisce un puntatore alla struttura Conteggio che contiene
- * per ogni flusso FPi la sua frequenza reale. Per ulteriori dettagli consultare i commenti inseriti nel
- * codice.
+ * Apriamo il file che simula lo stream di flussi e lo analizziamo riga per riga.
+ * Mappiamo ogni flusso ricavato dal file un un flusso FPi e mediante il %m ci ricaviamo anche il
+ * bucket in cui è mappato. L'algoritmo crea una struttura Conteggio che contiene
+ * per ogni flusso FPi la sua frequenza reale e partendo da questa crea una struttura Tracker_Unit che contiene
+ * i conteggi reali e la restituisce in output.
+ * Per ulteriori dettagli consultare i commenti inseriti nel codice.
  * --------------------------------------------------------------------------------------------------------/
 */
 Tracker_unit* frequenza_reale(int m) {
@@ -267,7 +267,7 @@ Tracker_unit* frequenza_reale(int m) {
 
     /*
      * Come viene creato il Tracker che contiene i conteggi reali?
-     * Ricordo che per costruzione ogni flusso presente nella struct Conteggio è univoco e contiene la frequenza ad esso
+     * P costruzione ogni flusso presente nella struct Conteggio è univoco e contiene la frequenza ad esso
      * associata e il bucket del Tracker in cui è mappato.
      * Per ogni flusso presente in Conteggio vediamo se il contatore FPr della tracker unit in cui è mappato è vuoto e in,
      * caso di esito positivo, andiamo a monitorare quel flusso in quel bucket.
@@ -303,12 +303,12 @@ Tracker_unit* frequenza_reale(int m) {
 /*
  * ----------------------------------------calcola_fitness()----------------------------------------------/
  * Funzione che prende in input un cromosoma, un intero k che indica il k-esimo cromosoma della popolazione
- * che stiamo passando come input, un puntatore alla struttura Popolazione e un contatore alla struttura
- * Conteggio che contiene i conteggi reali dei flussi FPi.
+ * che stiamo passando come input, un puntatore alla struttura Popolazione e un puntatore alla struttura
+ * Tracker_unit.
  * Viene addestrato l'algoritmo heavy_tracker con i parametri derivanti dalla decodifica del cromosoma
  * disucssa precedentemente e infine viene confrontato il conteggio del flusso stimato dal tracker con il
- * conteggio reale presente nella Struct conteggio. L'errore totale sarà dato dalla somma dei singoli errori
- * e la fitness totale sara data da : fitness= -errore.
+ * conteggio reale presente nel tracker reale passato come parametro. L'errore totale sarà dato dalla somma
+ * dei singoli errori / COLONNE_TRACKER  e la fitness totale sara data da fitness= -errore.
  * Infine la fitness viene salvata in popolazione.fitness[k], cioè all'interno della struttura popolazione
  * andiamo a contenere il valore di fitness del k-esimo cromosoma.
  * --------------------------------------------------------------------------------------------------------/
@@ -609,7 +609,7 @@ Parametri* genetic_algotithm() {
     double fitness = 0;
     int k = 0;
 
-    // In media riesco a trovare una soluzione accettabile già dopo 25/50 iterazioni(Vedere documentazione)
+    // In media riesco a trovare una soluzione accettabile già dopo 25/50 iterazioni (Vedere documentazione)
     while (k < 25) {
 
         // Calcolo del fitness per ogni cromosoma presente nella popolazione
