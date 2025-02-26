@@ -18,11 +18,13 @@ typedef struct {
     int FPi ;
 } Output_hash;
 
-bool HeavyTracker(char *pl, double b_hk,double b,  double c, double q, double gamma, double t, Tracker_unit *tracker);
+bool heavyTracker(char *pl, double b_hk,double b,  double c, double q, double gamma, double t, Tracker_unit *tracker);
 void print_contatori(Tracker_unit *tk);
-void Tracker_unit_free(Tracker_unit *tk);
+void tracker_unit_free(Tracker_unit *tk);
 Tracker_unit * tracker_unit_Init(unsigned int m, unsigned int d);
 void swap_f(Tracker_unit * tk, unsigned int bucket, int j);
 void swap_c(Tracker_unit * tk, unsigned int bucket, int j);
+void modeA_update(Tracker_unit *tk, double b, double c, double q, double γ, int j, Output_hash *output);
+void modeB_update(Tracker_unit *tk, double b, double c, double q, double γ, double b_hk, int j, Output_hash * output);
 
 #endif

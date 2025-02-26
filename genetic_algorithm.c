@@ -103,8 +103,10 @@ void free_popolazione(Popolazione* popolazione) {
 
 int binary_to_decimal (const unsigned int *array) {
     int value = 0;
+    int esponente = 0;
     for (int i = (SIZE_CROMOSOMA/4)-1; i > -1; i--) {
-        value = value + (int)array[i] * (int)pow(2, (i));
+        value = value + (int)array[i] * (int)pow(2, (esponente));
+        esponente++;
     }
     return value;
 }
@@ -152,22 +154,22 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
             unsigned int val_max = (unsigned int) pow(2, size) -1;
             unsigned int val_min = 0;
             if (n * size == SIZE_CROMOSOMA/4) {   //Stiamo nel primo pezzo poichè 1/4 della size del cromosoma
-                // Diamo il valore a b che deve essere compreso tra 1 e 1.1:
-                b = 1 + (value - val_min) * (1.1 - 1) / ((val_max - val_min));
+                // Diamo il valore a b che deve essere compreso tra 1 e 1.1 (normalizziamo):
+                b = 1 + (value - val_min) * (1.1 - 1) / (val_max - val_min);
                 parametri->b = b;
             }
             else if (n * size == SIZE_CROMOSOMA/2) {   // Stiamo nel secondo pezzo
-                // Diamo il valore a gamma che deve essere compreso tra 0 e 0.001:
+                // Diamo il valore a gamma che deve essere compreso tra 0 e 0.001 (normalizziamo):
                 gamma = (value - val_min) * (0.001) / ((val_max - val_min));
                 parametri->gamma = gamma;
             }
             else if (n * size == 3* SIZE_CROMOSOMA/4) {    // Stiamo nel terzo pezzo
-                // Diamo il valore a q che deve essere compresa nell'intervallo [0, 1-gamma]
+                // Diamo il valore a q che deve essere compresa nell'intervallo [0, 1-gamma](normalizziamo):
                 q = (value - val_min) * (1 - gamma) / ((val_max - val_min));
                 parametri->q = q;
             }
             else {   // Stiamo nel quarto pezzo
-                // Diamo a c un valore compreso tra [0, 10]
+                // Diamo a c un valore compreso tra [0, 10] (normalizziamo):
                 c = (double) (value - val_min) * (10)/ ((val_max - val_min));
                 parametri->c = c;
             }
@@ -191,14 +193,14 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
  * Per ulteriori dettagli consultare i commenti inseriti nel codice.
  * --------------------------------------------------------------------------------------------------------/
 */
-Tracker_unit* frequenza_reale(int m) {
+Tracker_unit* frequenza_reale() {
     FILE *file = fopen(PATH_FILE_GA, "r");
     if (file == NULL) {
         printf("File non trovato");
         exit(EXIT_FAILURE);
     }
 
-    Conteggio* cont = (Conteggio*)malloc(m * sizeof(Conteggio));
+    Conteggio* cont = (Conteggio*)malloc(COLONNE_TRACKER * sizeof(Conteggio));
     if (cont == NULL) {
         printf("Malloc fallita");
         fclose(file);
@@ -206,13 +208,13 @@ Tracker_unit* frequenza_reale(int m) {
     }
 
     char stream [2048];
-    int n = m; // La variabile n viene utilizzata per reallocare più memoria se il numero di FPi distinti è > m.
+    int n = COLONNE_TRACKER; // La variabile n viene utilizzata per reallocare più memoria se il numero di FPi distinti è > m.
     int visitato = 0;  // Tiene conto del numero di elementi distinti visitati fino a quel momento.
     while (fgets(stream, 2048, file)) {
         char *flusso = strtok(stream, ",");
         // Per ogni elemento dello stream calcoliamo FPi e bucket tramite la f. hash XXH64.
         unsigned int FPi = XXH64(flusso, strlen(flusso) , SEED_HASH);
-        unsigned int bucket = FPi % m;
+        unsigned int bucket = FPi % COLONNE_TRACKER;
 
         int count = 0;   // Tiene conto se sono entrato nel ciclo if o no
 
@@ -321,20 +323,20 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
     if (tracker == NULL) {
         printf("Il tracker unit è vuoto\n");
         free_popolazione(popolazione);
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
     if (tk_reale == NULL) {
         free_popolazione(popolazione);
-        Tracker_unit_free(tracker);
+        tracker_unit_free(tracker);
         printf("La struct Tracker_reale è vuota \n");
         exit(EXIT_FAILURE);
     }
 
     if (popolazione == NULL || popolazione->fitness == NULL || popolazione->popolazione == NULL)  {
-        Tracker_unit_free(tracker);
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tracker);
+        tracker_unit_free(tk_reale);
         printf("La struct popolazione è vuota");
         exit(EXIT_FAILURE);
     }
@@ -343,8 +345,8 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
     // I parametri estratti dal cromosoma saranno mandati in input all'algoritmo heavy tracker.
     FILE *file = fopen(PATH_FILE_GA, "r");
     if (file == NULL) {
-        Tracker_unit_free(tracker);
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tracker);
+        tracker_unit_free(tk_reale);
         free_popolazione(popolazione);
         free(parametri);
         printf("File non trovato");
@@ -360,7 +362,7 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
     // Analizziamo il flusso e stimiamo i conteggi dei flussi più frequenti.
     while (fgets(stream, 2048, file)) {
         char *flusso = strtok(stream, ",");
-        HeavyTracker(flusso, parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, t, tracker);
+        heavyTracker(flusso, parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, t, tracker);
     }
 
     int errore = 0;
@@ -379,7 +381,7 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
 
     free(parametri);
     fclose(file);
-    Tracker_unit_free(tracker);
+    tracker_unit_free(tracker);
 
     return fitness;
 }
@@ -402,12 +404,12 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
  * diversità nella nuova popolazione. (Per maggiori chiarimenti consultare la documentazione).
  * --------------------------------------------------------------------------------------------------------/
 */
-Popolazione* SUS(Popolazione* popolazione) {
+Popolazione* sus(Popolazione* popolazione) {
 
     Popolazione * popol_temp = inizializza_popolazione();
     if (popolazione == NULL) {
         printf("Popolazione vuota!! \n");
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -452,7 +454,7 @@ Popolazione* SUS(Popolazione* popolazione) {
 /*
  * -------------------------------------------swap()-----------------------------------------------------/
  * Funzione che prende in input 2 cromosomi, una cella di partenza e una cella di fine e fa lo swap delle
- * celle che si trovano nell'intervallo [start; end] per i due cromosomi.
+ * celle che si trovano nell'intervallo (start; end) per i due cromosomi.
  * --------------------------------------------------------------------------------------------------------/
 */
 void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int end) {
@@ -483,7 +485,7 @@ void crossover(Popolazione* popolazione) {
 
     if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione non trovata");
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -492,14 +494,14 @@ void crossover(Popolazione* popolazione) {
     unsigned int *cromosoma1 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma1 == NULL) {
         printf("Malloc fallita");
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
     unsigned int *cromosoma2 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma2 == NULL) {
         printf("Malloc fallita");
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -557,7 +559,7 @@ void crossover(Popolazione* popolazione) {
 void mutazione(Popolazione *popolazione) {
     if (popolazione == NULL || popolazione->popolazione == NULL) {
         printf("Popolazione vuota");
-        Tracker_unit_free(tk_reale);
+        tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
@@ -601,7 +603,7 @@ Parametri* genetic_algotithm() {
     Popolazione* popolazione = inizializza_popolazione();
 
     // Calcolo per ogni FPi la sua frequenza reale.
-    Tracker_unit* tk_reale = frequenza_reale(COLONNE_TRACKER);
+    Tracker_unit* tk_reale = frequenza_reale();
 
     unsigned int cromosma[SIZE_CROMOSOMA];
     unsigned int best_cromosoma[SIZE_CROMOSOMA];
@@ -631,7 +633,7 @@ Parametri* genetic_algotithm() {
         }
 
         // Applico la funzione SUS per vedere quale cromosoma della popolazione sopravvive
-        popolazione = SUS(popolazione);
+        popolazione = sus(popolazione);
 
         // Applico il crossover per andare a combinare con P = P_CROSSOVER i cromosomi tra loro
         crossover(popolazione);
@@ -644,7 +646,7 @@ Parametri* genetic_algotithm() {
     Parametri *parametri = decodifica_cromosoma(best_cromosoma);
 
     free_popolazione(popolazione);
-    Tracker_unit_free(tk_reale);
+    tracker_unit_free(tk_reale);
 
     return parametri;
 }

@@ -7,7 +7,7 @@
 
 /*
  * -------------------------------------------main()---------------------------------------------------/
- * In questa sezione andiamo a simulare l'esecuzione degli algoritmi genetic_algoritmh e heavytracker.
+ * In questa sezione andiamo a simulare l'esecuzione degli algoritmi genetic_algoritmh e HeavyTracker.
  * Facciamo partire l'algortimo genetic_algoritmh per ricavarci i parametri migliori (che massimizzano
  * la fitness) da passare all'algoritmo heavytracker. Successivamente eseguiamo l'aloritmo heavytracker
  * passandogli di volta in volta un pacchetto (Indirizzo_IP:Porta). L'algoritmo ci restituisce per ogni
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
     while (fgets(pacchetto, 2048, file)) {
         char *flusso = strtok(pacchetto, ",");
-        bool ht = HeavyTracker(flusso,parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, soglia, tracker);
+        bool ht = heavyTracker(flusso,parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, soglia, tracker);
         if (ht == true) {
             fprintf(file_output, "%s: true\n", flusso);
         }
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     fclose(file);
     fclose(file_output);
     free(parametri);
-    Tracker_unit_free(tracker);
+    tracker_unit_free(tracker);
 
 
     return 0;

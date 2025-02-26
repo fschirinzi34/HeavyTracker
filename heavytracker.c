@@ -223,6 +223,7 @@ void modeB_update(Tracker_unit *tk, double b, double c, double q, double γ, dou
             tk-> Cr[j][bucket] = tk-> Cr[j][bucket] + 1;
         }
 
+        rand_val = (double) rand() / RAND_MAX;
         if (rand_val < p_decay) {
             tk-> Ca[j][bucket] = tk-> Ca[j][bucket] - 1;
             if (tk->Ca[j][bucket] == 0) {
@@ -248,7 +249,7 @@ void modeB_update(Tracker_unit *tk, double b, double c, double q, double γ, dou
  * FPa = Cr = Ca = 0. (Si passa da modalità A a modalità B)
  * -------------------------------------------------------------------------------------------------------------/
 */
-bool HeavyTracker(char *pl, double b_hk, double b, double c, double q, double gamma, double t, Tracker_unit *tracker) {
+bool heavyTracker(char *pl, double b_hk, double b, double c, double q, double gamma, double t, Tracker_unit *tracker) {
 
     if (tracker == NULL) {
         printf("Errore: Tracker unit vuoto\n");
@@ -258,7 +259,7 @@ bool HeavyTracker(char *pl, double b_hk, double b, double c, double q, double ga
     unsigned int m = tracker->m; // Numero di contatori
     unsigned int d = tracker->d; // Numero di righe
 
-    Output_hash * output;
+    Output_hash * output = NULL;
     for (int j = 0; j < d; j++) {
         output = hash_function(m, pl, j);
         unsigned int bucket = output->bucket;
@@ -299,7 +300,7 @@ bool HeavyTracker(char *pl, double b_hk, double b, double c, double q, double ga
  * Funzione che prende in input il Tracker che dobbiamo deallocare e lo dealloca.
  * --------------------------------------------------------------------------------------------------------/
 */
-void Tracker_unit_free(Tracker_unit *tk) {
+void tracker_unit_free(Tracker_unit *tk) {
     if (!tk) {
         return;
     }

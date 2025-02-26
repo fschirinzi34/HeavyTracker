@@ -34,7 +34,7 @@ typedef struct {
     double b_hk;
 } Parametri;
 
-Tracker_unit* frequenza_reale(int m);
+Tracker_unit* frequenza_reale();
 double calcola_fitness(unsigned int *cromosoma, int k, Popolazione * p, Tracker_unit* t);
 Popolazione* inizializza_popolazione();
 Parametri* decodifica_cromosoma(const unsigned int *cromosoma);
@@ -42,5 +42,7 @@ void free_popolazione(Popolazione *popolazione);
 void crossover(Popolazione *popolazione);
 void mutazione(Popolazione *popolazione);
 Parametri* genetic_algotithm();
+int binary_to_decimal (const unsigned int *array);
+void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int end);
 
 #endif
