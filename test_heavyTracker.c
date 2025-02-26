@@ -5,10 +5,6 @@
 #include "Unity-master/src/unity.h"
 #include "Unity-master/src/unity.c"
 
-/*
- *Comando per compilare "gcc -o test_heavyTracker test_heavyTracker.c genetic_algorithm.c heavytracker.c xxhash.c"
-*/
-
 void setUp(void) {
 
 }
@@ -22,7 +18,7 @@ void tearDown(void) {
 
 
 /*
- * --------------------------------------------modeA_update_test()--------------------------------------------------------/
+ * --------------------------------------------modeA_update_test()-----------------------------------------------------/
  * La funzione è stata modificata per prendere in input anche un numero casuale utilizzato per verificare se viene
  * soddisfatta la probabilità di espulsione o no.
  * Utilizziamo questa strategia per avere sotto controllo i risulati della funzione, cosa non possibile se ci
@@ -281,7 +277,7 @@ void test_modeA_update() {
 }
 
 void test_modeB_update() {
-    
+
     /* Il test di questa funzione si struttura in 4 casi: */
 
     Tracker_unit *tk = tracker_unit_Init(COLONNE_TRACKER, RIGHE_TRACKER);

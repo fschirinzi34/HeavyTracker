@@ -458,18 +458,18 @@ Popolazione* sus(Popolazione* popolazione) {
  * --------------------------------------------------------------------------------------------------------/
 */
 void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int end) {
-    int size = end - start;
+    int size = end - start + 1;
 
     unsigned int temp1[size];
     unsigned int temp2[size];
 
-    for (int i = start + 1; i < end; i++) {
-        temp1[i - start + 1] = cromosoma1[i];
-        temp2[i - start + 1] = cromosoma2[i];
+    for (int i = start; i <= end; i++) {
+        temp1[i - start] = cromosoma1[i];
+        temp2[i - start] = cromosoma2[i];
     }
-    for (int i = start + 1; i < end; i++) {
-        cromosoma1[i] = temp2[i - start + 1];
-        cromosoma2[i] = temp1[i - start + 1];
+    for (int i = start; i <= end; i++) {
+        cromosoma1[i] = temp2[i - start];
+        cromosoma2[i] = temp1[i - start];
     }
 }
 
