@@ -7,8 +7,8 @@
 # define B_HK 1.1
 # define SEED_HASH 0
 # define EPSILON 0.1
-# define PATH_FILE "/Users/francescoschirinzi/Documents/Università/Magistrale/Data_Mining/Progetto/HeavyTracker/Dat1.csv"
-# define PATH_FILE_GA "/Users/francescoschirinzi/Documents/Università/Magistrale/Data_Mining/Progetto/HeavyTracker/Dat3.csv"
+# define PATH_FILE "Dat1.csv"
+# define PATH_FILE_GA "Dat3.csv"
 
 #include "heavytracker.h"
 typedef struct {
