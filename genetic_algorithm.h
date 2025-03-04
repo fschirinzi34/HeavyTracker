@@ -1,12 +1,9 @@
 #ifndef GENETIC_ALGORITHM_H
 #define GENETIC_ALGORITHM_H
 
-
 # define SIZE_POPOLAZIONE 10
 # define SIZE_CROMOSOMA 32
 # define P_CROSSOVER 0.7
-# define RIGHE_TRACKER 10
-# define COLONNE_TRACKER 1000
 # define B_HK 1.1
 # define SEED_HASH 0
 # define EPSILON 0.1
@@ -16,7 +13,7 @@
 #include "heavytracker.h"
 typedef struct {
     unsigned int bucket;
-    int FPi ;
+    unsigned int FPi ;
     int frequenza;
     int size_array;
 } Conteggio ;
@@ -44,5 +41,6 @@ void mutazione(Popolazione *popolazione);
 Parametri* genetic_algotithm();
 int binary_to_decimal (const unsigned int *array);
 void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int end);
+Parametri* genetic_algotithm();
 
 #endif

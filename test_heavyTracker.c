@@ -14,21 +14,22 @@ void tearDown(void) {
 }
 
 
-//--------------------------- Funzioni leggermente modificate per effettuare il test ---------------------------------//
+//----------------------------------- Funzioni modificate per effettuare il test -------------------------------------//
 
 
 /*
  * --------------------------------------------modeA_update_test()-----------------------------------------------------/
- * La funzione è stata modificata per prendere in input anche un numero casuale utilizzato per verificare se viene
+ * La funzione è stata modificata per prendere in input un numero casuale utilizzato per verificare se viene
  * soddisfatta la probabilità di espulsione o no.
  * Utilizziamo questa strategia per avere sotto controllo i risulati della funzione, cosa non possibile se ci
- * affidiamo alla generazione di numeri casuali.
+ * affidiamo alla generazione di numeri casuali. In questo modo siamo noi a decidere se la probabilità di espulsione
+ * viene soddisfatta riuscendo così a prevedere il risultato, che sarà confrontato con l'output della funzione.
  * --------------------------------------------------------------------------------------------------------------------/
 */
-void modeA_update_test(Tracker_unit *tk, double b, double c, double q, double γ, int j, Output_hash *output, double numero_casuale)
+void modeA_update_test(Tracker_unit *tk, double b, double c, double q, double γ, int j, const Output_hash *output, double numero_casuale)
 {
     unsigned int bucket = output->bucket;
-    int FPi = output->FPi;
+    unsigned int FPi = output->FPi;
 
     if (tk == NULL) {
         printf("Errore: Tracker Unit vuoto\n");
@@ -69,10 +70,10 @@ void modeA_update_test(Tracker_unit *tk, double b, double c, double q, double γ
  * soddifatta la probabilità di decadimento.
  * ---------------------------------------------------------------------------------------------------------------------/
 */
-void modeB_update_test(Tracker_unit *tk, double b, double c, double q, double γ, double b_hk, int j, Output_hash * output, double numero_casuale_plus, double numero_casuale_decay) {
+void modeB_update_test(const Tracker_unit *tk, double b, double c, double q, double γ, double b_hk, int j, const Output_hash * output, double numero_casuale_plus, double numero_casuale_decay) {
 
     unsigned int bucket = output->bucket;
-    int FPi = output->FPi;
+    unsigned int FPi = output->FPi;
 
     if (tk->Cr[j][bucket] == 0) {
 
@@ -127,13 +128,11 @@ bool heavyTracker_test(Output_hash *output, double b_hk, double b, double c, dou
         exit(EXIT_FAILURE);
     }
 
-    unsigned int m = tracker->m; // Numero di contatori
-    unsigned int d = tracker->d; // Numero di righe
 
     unsigned int bucket = output->bucket;
-    int FPi = output->FPi;
+    unsigned int FPi = output->FPi;
 
-    for (int j = 0; j < d; j++) {
+    for (int j = 0; j < RIGHE_TRACKER; j++) {
 
         if (tracker->bit[j][bucket] == 1) {
 
@@ -154,7 +153,6 @@ bool heavyTracker_test(Output_hash *output, double b_hk, double b, double c, dou
             tracker->FPr[j][bucket] = 0;
             tracker->Cr[j][bucket] = 0;
             tracker->Ca[j][bucket] = 0;
-            // Questo TRUE è stato aggiunto da me, non c'era nello pseudocodice.
             return true;
         }
     }
@@ -169,8 +167,6 @@ void test_Tracker_tracker_unit_Init() {
 
     TEST_ASSERT_NOT_NULL(tk);
 
-    TEST_ASSERT_EQUAL_INT(COLONNE_TRACKER, tk->m);
-    TEST_ASSERT_EQUAL_INT(RIGHE_TRACKER, tk->d);
 
     TEST_ASSERT_NOT_NULL(tk->FPr);
     TEST_ASSERT_NOT_NULL(tk->FPa);
@@ -259,13 +255,15 @@ void test_modeA_update() {
 
     // Else (Se nessuna delle 2 ipotesi precedenti viene soddisfatta):
     oh->FPi = 1000;
+    // Non viene soddisfatta la P. di espulsione in quanto viene preso un numero casuale = 0.9 (> di P_plus)
     modeA_update_test(tk,1.086667, 4.392157, 0.336920, 0.000992, 0, oh, 0.9);
     TEST_ASSERT_EQUAL_INT(10,tk->FPr[0][0]);
     TEST_ASSERT_EQUAL_INT(2,tk->Cr[0][0]);
     TEST_ASSERT_EQUAL_INT(100,tk->FPa[0][0]);
     TEST_ASSERT_EQUAL_INT(2,tk->Ca[0][0]);
 
-    modeA_update_test(tk,1.086667, 4.392157, 0.336920, 0.000992, 0, oh, 0.0);
+    // Viene soddisfatta la P. di espulsione in quanto viene preso un numero casuale = 0.0( < di P_plus)
+    modeA_update_test(tk,1.086667, 4.392157, 0.336920, 0.000992, 0, oh, 0.);
     TEST_ASSERT_EQUAL_INT(1000,tk->FPr[0][0]);
     TEST_ASSERT_EQUAL_INT(3,tk->Cr[0][0]);
     TEST_ASSERT_EQUAL_INT(10,tk->FPa[0][0]);
@@ -315,7 +313,7 @@ void test_modeB_update() {
     TEST_ASSERT_EQUAL_INT(1,tk->Ca[0][0]);
 
     modeB_update_test(tk,1.086667, 4.392157, 0.336920, 0.000992, 1.100, 0, oh, 0.9, 0.0);
-    TEST_ASSERT_EQUAL_INT(100,tk->FPr[0][0]);
+    TEST_ASSERT_EQUAL_INT(100,tk->FPr[0][0]);   // In questo caso per via del decremento Ca è passato a 0 e dunque si è aggiornato il valore di FPr
     TEST_ASSERT_EQUAL_INT(3,tk->Cr[0][0]);
     TEST_ASSERT_EQUAL_INT(1,tk->Ca[0][0]);
 

@@ -9,10 +9,10 @@
 
 /*
  *----------------------------------------hash_function()---------------------------------------------/
- * Funzione che prende in input il numero di colonne (Tracker unit per riga) del Tracker, l'input che vogliamo mappare
+ * Funzione che prende in input il numero di colonne (tracker unit per riga) del Tracker, l'input che vogliamo mappare
  * con la funzione hash e il seme per la funzione hash.
- * Utilizzando la funzione hash XXH64 situata nella libreria xxhash.h andiamo a mappare l'input al flusso
- * corrispondente e con FPi % m ci ricaviamo il bucket in cui viene mappato dal flusso
+ * Utilizzando la funzione hash XXH64 presa dalla libreria xxhash.h andiamo a mappare il l' "input" all'etichetta FPi
+ * e con FPi % m ci ricaviamo il bucket del tracker in cui viene mappato.
  * --------------------------------------------------------------------------------------------------/
  */
 Output_hash * hash_function(unsigned int m, char *input, int seed) {
@@ -24,7 +24,7 @@ Output_hash * hash_function(unsigned int m, char *input, int seed) {
     }
 
     size_t len = strlen(input);
-    unsigned int FPi = XXH64(input, len, seed);
+    unsigned int FPi = XXH64(input, len, seed) % (int)pow(2, 32);
     oh->FPi = (int) FPi;
 
     unsigned int bucket = FPi % m;
@@ -35,9 +35,9 @@ Output_hash * hash_function(unsigned int m, char *input, int seed) {
 
 /*
  * ----------------------------------------tracker_unit_Init()---------------------------------------------/
- * Funzione che prende in input il numero di colonne(Tracker unit per riga) e di righe con cui vogliamo
+ * Funzione che prende in input il numero di colonne (tracker unit per riga) e di righe con cui vogliamo
  * inizializzare il nostro Tracker.
- * Inizialmente tutti i campi del Tracker saranno settati a 0 (stiamo usando la calloc).
+ * Inizialmente tutti i campi del Tracker sono settati a 0.
  * --------------------------------------------------------------------------------------------------------/
 */
 
@@ -51,8 +51,8 @@ Tracker_unit * tracker_unit_Init(unsigned int m, unsigned int d)
 
         tk->m = m;
         tk->d = d;
-        tk->FPr=(int **) calloc(tk->d, sizeof(int *));
-        tk->FPa=(int **) calloc(tk->d, sizeof(int *));
+        tk->FPr=(unsigned int **) calloc(tk->d, sizeof(unsigned int *));
+        tk->FPa=(unsigned int **) calloc(tk->d, sizeof(int *));
         tk->Ca=(int **) calloc(tk->d, sizeof(int *));
         tk->Cr=(int **) calloc(tk->d, sizeof(int *));
         tk->bit=(unsigned int **) calloc(tk->d, sizeof(unsigned int *));
@@ -65,8 +65,8 @@ Tracker_unit * tracker_unit_Init(unsigned int m, unsigned int d)
 
         for (unsigned int j = 0; j < d; j++) {
 
-            tk->FPr[j]=(int *) calloc(tk->m, sizeof(int));
-            tk->FPa[j]=(int *) calloc(tk->m, sizeof(int));
+            tk->FPr[j]=(unsigned int *) calloc(tk->m, sizeof(unsigned int));
+            tk->FPa[j]=(unsigned int *) calloc(tk->m, sizeof(unsigned int));
             tk->Cr[j]=(int *) calloc(tk->m, sizeof(int));
             tk->Ca[j]=(int *) calloc(tk->m, sizeof(int));
             tk->bit[j]=(unsigned int *) calloc(tk->m, sizeof(unsigned int));
@@ -84,15 +84,15 @@ Tracker_unit * tracker_unit_Init(unsigned int m, unsigned int d)
 
 /*
  * -------------------------------------------swap_f()-----------------------------------------------------/
- * Funzione che prende in input il tracker(deve essere precedentemente inizializzato), un intero "bucker" che
+ * Funzione che prende in input il tracker (deve essere precedentemente inizializzato), un intero "bucket" che
  * indica il tracker unit a cui ci riferiamo e un intero "j" che indica la riga a cui ci riferiamo.
- * La seguente funzione fa uno swap dei valori presenti nei campi del FPr e FPa del tracker unit identificato
- * da [bucket] e [j].
+ * La seguente funzione fa uno swap dei valori presenti nei campi FPr e FPa del tracker unit identificato
+ * da colonna = [bucket] e  riga = [j].
  * --------------------------------------------------------------------------------------------------------/
 */
 void swap_f(Tracker_unit * tk, unsigned int bucket, int j) {
     if (tk != NULL) {
-        int temp = tk->FPr[j][bucket];
+        unsigned int temp = tk->FPr[j][bucket];
         tk->FPr[j][bucket]= tk->FPa[j][bucket];
         tk->FPa[j][bucket] = temp;
     } else {
@@ -103,10 +103,10 @@ void swap_f(Tracker_unit * tk, unsigned int bucket, int j) {
 
 /*
  * -------------------------------------------swap_c()-----------------------------------------------------/
- * Funzione che prende in input il tracker(deve essere precedentemente inizializzato), un intero "bucker" che
+ * Funzione che prende in input il tracker (deve essere precedentemente inizializzato), un intero "bucket" che
  * indica il tracker unit a cui ci riferiamo e un intero "j" che indica la riga a cui ci riferiamo.
- * La seguente funzione fa uno swap dei valori presenti nei contatori  Cr e Ca del tracker unit identificato
- * da [bucket] e [j].
+ * La seguente funzione fa uno swap dei valori presenti nei contatori Cr e Ca del tracker unit identificato
+ * dai valori [bucket] e [j].
  * --------------------------------------------------------------------------------------------------------/
 */
 void swap_c(Tracker_unit * tk, unsigned int bucket, int j) {
@@ -123,24 +123,24 @@ void swap_c(Tracker_unit * tk, unsigned int bucket, int j) {
 
 /*
  * -------------------------------------------modeA_update()-----------------------------------------------------/
- * Funzione che prende in input il Tracker, i parametri b, c, g e γ (precedentemente stimati dall'algoritmo
- * genetico), un intero j che il livello del tracker a cui ci troviamo e la struttura Output_hash che
- * contiene i valori restituiti dalla funzione hash_function() (FPi e bucket a cui deve essere monitorato).
+ * Funzione che prende in input il Tracker, i parametri b, c, q e γ (precedentemente stimati dall'algoritmo
+ * genetico), un intero j che corrisponde al livello del tracker a cui ci riferiamo e la struttura Output_hash che
+ * contiene i valori restituiti dalla funzione hash_function() ( contiene FPi e bucket).
  * La funzione opera secondo la seguente strategia:
- * - Se il contatore Cr è vuoto o se FPi coincide con FPr della tracker unit che stiamo analizzando poniamo
- *   FPr = FPi e incrementiamo di 1 il valore del contatore Cr
- * - Altrimenti se il contatore Ca è vuoto o se FPi coincide con FPa della tracker unit che stiamo analizzando
- *   poniamo FPa = FPi e incrementiamo di 1 il valore del contatore Ca.
+ * - Se il contatore Cr è vuoto o se FPi coincide con FPr della tracker unit identificata dall'indice "bucket" poniamo
+ *   FPr = FPi e incrementiamo di 1 il valore del contatore Cr;
+ * - Altrimenti se il contatore Ca è vuoto o se FPi coincide con FPa della tracker unit [bucket]
+ *   poniamo FPa = FPi e incrementiamo di 1 il valore del contatore Ca;
  * - Altrimenti nessuno dei due contatori è vuoto e FPi non coincide con i due flussi monitorati in quel momento
  *   e dunque calcoliamo la probabilità di espulsione e, se verificata, aggiorniamo il valore di FPa con il
  *   nuovo FPi e incrementiamo Ca di 1. Se Ca > Cr  utilizziamo swap_c() e swap_f() precedentemente
- *   descritte, in quanto in FPr e Cr deve essere monitorato il flusso più frequente.
+ *   descritte, in quanto in FPr e Cr deve essere monitorato il flusso più frequente fino a quel momento.
  * -------------------------------------------------------------------------------------------------------------/
 */
 void modeA_update(Tracker_unit *tk, double b, double c, double q, double γ, int j, Output_hash *output)
 {
     unsigned int bucket = output->bucket;
-    int FPi = output->FPi;
+    unsigned int FPi = output->FPi;
 
     if (tk == NULL) {
         printf("Errore: Tracker Unit vuoto\n");
@@ -178,9 +178,9 @@ void modeA_update(Tracker_unit *tk, double b, double c, double q, double γ, int
 
 /*
  * -------------------------------------------modeB_update()-----------------------------------------------------/
- * Funzione che prende in input il Tracker, i parametri b, c, g e γ (precedentemente stimati dall'algoritmo
- * genetico),il parametro b_hk scelto da noi, un intero j che indica il livello del tracker a cui ci troviamo
- * e la struttura Output_hash che contiene i valori restituiti dalla funzione hash_function() (FPi e bucket a cui
+ * Funzione che prende in input il Tracker, i parametri b, c, q e γ (precedentemente stimati dall'algoritmo
+ * genetico), il parametro b_hk, un intero j che indica il livello del tracker a cui ci troviamo
+ * e la struttura Output_hash che contiene i valori restituiti dalla funzione hash_function() (FPi e bucket in cui
  * deve essere monitorato).
  * La funzione opera secondo la seguente strategia:
  * - Se il contatore Cr è vuoto  poniamo FPr = FPi, Cr = 1 e Ca = 1.
@@ -194,7 +194,7 @@ void modeA_update(Tracker_unit *tk, double b, double c, double q, double γ, int
 void modeB_update(Tracker_unit *tk, double b, double c, double q, double γ, double b_hk, int j, Output_hash * output) {
 
     unsigned int bucket = output->bucket;
-    int FPi = output->FPi;
+    unsigned int FPi = output->FPi;
 
     if (tk->Cr[j][bucket] == 0) {
 
@@ -236,12 +236,12 @@ void modeB_update(Tracker_unit *tk, double b, double c, double q, double γ, dou
 
 /*
  * -------------------------------------------heavyTracker()-----------------------------------------------------/
- * Funzione che prende in input il Tracker, i parametri b, c, g e γ (precedentemente stimati dall'algoritmo
- * genetico),il parametro b_hk scelto da noi e un double t che indica la soglia che decreta se un flusso è
+ * Funzione che prende in input il Tracker, i parametri b, c, q e γ (precedentemente stimati dall'algoritmo
+ * genetico),il parametro b_hk e  t che indica la soglia che decreta se un flusso è
  * frequente o meno.
- * La funzione restituisce un valore boolenao True o False che indica se l'input è un flusso frequente o no.
+ * La funzione restituisce un valore booleano True o False che indica se l'input è un flusso frequente o no.
  * Per ogni livello del Tracker applichiamo la funzione hash_function() che ci restituisce il flusso FPi e
- * il contatore a cui deve essere monitorato quel flusso. Se il Tag Bit del tracker unit a cui è mappato
+ * il contatore in cui deve essere monitorato quel flusso. Se il Tag Bit del tracker unit a cui è mappato
  * il flusso è 1 e FPi coincide con FPa o se FPi = FPr e il conteggio Cr è >= t allora il flusso FPi è
  * frequente e viene ritornato il valore True, altrimenti richiamiamo la funzione modeB_update().
  * Se il Tag bit è = 0, se il contatore è < t richiamiamo la funzione modeA_update() altrimenti il flusso
@@ -256,14 +256,14 @@ bool heavyTracker(char *pl, double b_hk, double b, double c, double q, double ga
         exit(EXIT_FAILURE);
     }
 
-    unsigned int m = tracker->m; // Numero di contatori
+    unsigned int m = tracker->m; // Numero di colonne (tracker unit)
     unsigned int d = tracker->d; // Numero di righe
 
     Output_hash * output = NULL;
     for (int j = 0; j < d; j++) {
         output = hash_function(m, pl, j);
         unsigned int bucket = output->bucket;
-        int FPi = output->FPi;
+        unsigned int FPi = output->FPi;
 
         if (tracker->bit[j][bucket] == 1) {
 
@@ -296,9 +296,9 @@ bool heavyTracker(char *pl, double b_hk, double b, double c, double q, double ga
 }
 
 /*
- * ----------------------------------------Tracker_unit_free()---------------------------------------------/
- * Funzione che prende in input il Tracker che dobbiamo deallocare e lo dealloca.
- * --------------------------------------------------------------------------------------------------------/
+ * --------------------------------------------Tracker_unit_free()----------------------------------------------/
+ * Funzione che prende in input il Tracker e libera la memoria da esso allocata.
+ * ------------------------------------------------------------------------------------------------------------/
 */
 void tracker_unit_free(Tracker_unit *tk) {
     if (!tk) {

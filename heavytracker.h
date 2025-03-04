@@ -3,19 +3,23 @@
 
 #include <stdbool.h>
 
+#define SOGLIA 200
+# define RIGHE_TRACKER 1
+# define COLONNE_TRACKER 100000
+
 typedef struct {
-    int **FPr;
+    unsigned int **FPr;
     int **Cr;
-    int **FPa;
+    unsigned int **FPa;
     int **Ca;
     unsigned int **bit;
-    unsigned int m; // numero di tracker unit
-    unsigned int d; // numero di livelli
+    unsigned int m; // numero di tracker unit (Colonne)
+    unsigned int d; // numero di livelli (Righe)
 } Tracker_unit;
 
 typedef struct {
     unsigned int bucket;
-    int FPi ;
+    unsigned int FPi ;
 } Output_hash;
 
 bool heavyTracker(char *pl, double b_hk,double b,  double c, double q, double gamma, double t, Tracker_unit *tracker);

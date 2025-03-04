@@ -30,16 +30,14 @@ void print_popolazione(Popolazione *popolazione) {
 /*
  * ----------------------------------------inizializza_popolazione()---------------------------------------/
  * Funzione che inizializza la struttura Popolazione allocandola in memoria.
- * La popolazione viene vista in questo modo: le righe sono i cromosomi mentre le colonne sono i valori dei
- * cromosomi in quelle celle.
+ * La popolazione viene vista in questo modo: le righe sono i cromosomi mentre le colonne sono le celle che
+ * compongono ogni cromosoma.
  * La struttura Popolazione è composta anche da un array "fitness" che indica la fitness associata ad ogni
  * cromosoma.
  * La popolazione viene inizializzata in modo che i cromosomi siano composti da bit casuali (0 o 1).
  * --------------------------------------------------------------------------------------------------------/
 */
 Popolazione * inizializza_popolazione() {
-
-    // La popolazione viene vista in questo modo. Le righe sono i cromosomi mentre le colonne sono i valori dei cromosomi in quelle celle
 
     Popolazione* popolazione = NULL;
 
@@ -101,7 +99,13 @@ void free_popolazione(Popolazione* popolazione) {
     free(popolazione);
 }
 
-int binary_to_decimal (const unsigned int *array) {
+
+/*
+ * -------------------------------------------binary_to_decimal()------------------------------------------/
+ * Funzione che prende in input un array di bit e restituisce in output la sua conversione in decimale.
+ * --------------------------------------------------------------------------------------------------------/
+*/
+int binary_to_decimal(const unsigned int *array) {
     int value = 0;
     int esponente = 0;
     for (int i = (SIZE_CROMOSOMA/4)-1; i > -1; i--) {
@@ -116,13 +120,10 @@ int binary_to_decimal (const unsigned int *array) {
  * Funzione che prende in input un cromosoma, lo divide in 4 parti e ad ogni parte associa un parametro
  * (b, c, q e gamma).
  * Ogni pezzo contiene n bit, dunque associamo a quel parametro associato a quel pezzo il valore ricavato
- * dalla conversione da binario a decimale di quella stringa di bit.
+ * dalla conversione da binario a decimale di quell array di bit.
  * L'output è un puntatore alla Struct Parametri che contiene i valori ricavati per i parametri (b, c, q e gamma).
- * In realtà contiene anche il valore per il parametro b_hk che è scelto da noi mediante una costante situata
- * nella libreria "genetic_algorithm.h".
  * Poichè i parametri hanno dei vincoli relativi al valore che possono assumere, utilizziamo la normalizzazione
  * min-max per rispettarli.
- * La funzione binary_to_decimal() permette di effettuare la conversione da binario a decimale.
  * --------------------------------------------------------------------------------------------------------/
 */
 Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
@@ -140,7 +141,7 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
 
     parametri->b_hk = B_HK;
 
-    int count = 0;   // E' il contatore dell'array temp
+    int count = 0;   // E' l'indice dell'array temp
     int n = 1; // Tiene conto che pezzo del cromosoma stiamo processando: 1, 2, 3 o 4
 
     for (int i = 0; i < SIZE_CROMOSOMA; i++) {
@@ -148,7 +149,7 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
         // L'array temp tiene conto del pezzo del cromosoma associato ad un parametro
         temp[count] = cromosoma[i];
         count++;
-        if (i+1 == n * size) {
+        if (i+1 == n * size) {   //Aspettiamo ad entrare nel ciclo if fino a quando l'array temp non conterrà un pezzo intero.
             count = 0;   // Poniamo a 0 poichè ora temp dovrà contenere un altro pezzo del cromosoma
             value = binary_to_decimal(temp);
             unsigned int val_max = (unsigned int) pow(2, size) -1;
@@ -184,9 +185,8 @@ Parametri* decodifica_cromosoma(const unsigned int *cromosoma) {
 
 /*
  * ----------------------------------------frequenza_reale()----------------------------------------------/
- * Funzione che prende in input il numero di tracker unit per livello
  * Apriamo il file che simula lo stream di flussi e lo analizziamo riga per riga.
- * Mappiamo ogni flusso ricavato dal file un un flusso FPi e mediante il %m ci ricaviamo anche il
+ * Mappiamo ogni flusso ricavato dal file in un flusso FPi e mediante il %COLONNE_TRACKER ci ricaviamo anche il
  * bucket in cui è mappato. L'algoritmo crea una struttura Conteggio che contiene
  * per ogni flusso FPi la sua frequenza reale e partendo da questa crea una struttura Tracker_Unit che contiene
  * i conteggi reali e la restituisce in output.
@@ -208,19 +208,20 @@ Tracker_unit* frequenza_reale() {
     }
 
     char stream [2048];
-    int n = COLONNE_TRACKER; // La variabile n viene utilizzata per reallocare più memoria se il numero di FPi distinti è > m.
+    int n = COLONNE_TRACKER; // La variabile n viene utilizzata per reallocare più memoria se il numero di FPi distinti è > COLONNE_TRACKER.
     int visitato = 0;  // Tiene conto del numero di elementi distinti visitati fino a quel momento.
     while (fgets(stream, 2048, file)) {
+        // Viene preso solo il primo pezzo della riga (la riga viene divisa usando come separatore la ',')
         char *flusso = strtok(stream, ",");
-        // Per ogni elemento dello stream calcoliamo FPi e bucket tramite la f. hash XXH64.
-        unsigned int FPi = XXH64(flusso, strlen(flusso) , SEED_HASH);
+        // Per ogni elemento dello stream calcoliamo FPi e bucket tramite la funzione hash XXH64.
+        unsigned int FPi = XXH64(flusso, strlen(flusso), SEED_HASH) % (int)pow(2, 32);
         unsigned int bucket = FPi % COLONNE_TRACKER;
 
         int count = 0;   // Tiene conto se sono entrato nel ciclo if o no
 
         // Controlliamo se il flusso FPi è già contenuto nella struttura Conteggio costruita fino a quel momento
         for (int i = 0; i < visitato + 1; i++) {
-            if (cont[i].FPi == (int) FPi) {
+            if (cont[i].FPi == FPi) {
                 cont[i].frequenza++;
                 count++;
             }
@@ -228,11 +229,10 @@ Tracker_unit* frequenza_reale() {
         /* Se la variabile count è = 0 allora non siamo entrati nel ciclo if precedente e dunque il flusso FPi non è
          *  ancora presente nella struttura Conteggio
          */
-
         if (count == 0) {
             // Se visitato < n allora non c'è bisogno di reallocare la memoria e inseriamo il flusso FPi nella struttura
             if (visitato < n) {
-                cont[visitato].FPi = (int) FPi;
+                cont[visitato].FPi = FPi;
                 cont[visitato].frequenza = 1;
                 cont[visitato].bucket = bucket;
                 visitato ++;
@@ -248,14 +248,14 @@ Tracker_unit* frequenza_reale() {
                 }
                 cont = temp;
 
-                cont[visitato].FPi = (int) FPi;
+                cont[visitato].FPi = FPi;
                 cont[visitato].frequenza = 1;
                 cont[visitato].bucket = bucket;
                 visitato++;
             }
         }
     }
-    // cont[i].size_array contiene il numero di occorrenze presenti nella struct Conteggio.
+    // cont[i].size_array contiene il numero di flussi distinti.
     for (int i = 0; i < visitato; i++) {
         cont[i].size_array = visitato;
     }
@@ -267,16 +267,16 @@ Tracker_unit* frequenza_reale() {
         exit(EXIT_FAILURE);
     }
 
-    /*
-     * Come viene creato il Tracker che contiene i conteggi reali?
-     * P costruzione ogni flusso presente nella struct Conteggio è univoco e contiene la frequenza ad esso
+
+    /* Come viene creato il Tracker che contiene i conteggi reali?
+     * Per costruzione ogni flusso presente nella struct Conteggio è univoco e contiene la frequenza ad esso
      * associata e il bucket del Tracker in cui è mappato.
      * Per ogni flusso presente in Conteggio vediamo se il contatore FPr della tracker unit in cui è mappato è vuoto e in,
      * caso di esito positivo, andiamo a monitorare quel flusso in quel bucket.
      * Altrimenti vediamo se il contatore FPa è vuoto, se lo è andiamo a mappare il flusso in quel contatore, altrimenti
      * vediamo se la frequenza presente in Ca è minore rispetto a quella del nuovo flusso che stiamo monitorando e in caso
-     * di esito positivo andiamo a monitorare quel nuovo flusso in Ca e FPa.
-     * Così facendo il nostro tracker ideale conterrà per ogni bucket solo i 2 flussi più frequenti che sono stati mappati
+     * di esito positivo andiamo a monitorare quel nuovo flusso in FPa e inseriamo il nuovo conteggio in Ca.
+     * Così facendo il nostro tracker reale conterrà per ogni bucket solo i 2 flussi più frequenti che sono stati mappati
      * in quella tracker unit.
      * Infine se Ca > Cr andiamo a fare lo swap di FPa e FPr e Ca e Cr poichè, così come fatto nella mod-A di HeavyTracker,
      * vogliamo che FPr contenga il flusso più frequente della tracker unit.
@@ -310,8 +310,8 @@ Tracker_unit* frequenza_reale() {
  * Viene addestrato l'algoritmo heavy_tracker con i parametri derivanti dalla decodifica del cromosoma
  * disucssa precedentemente e infine viene confrontato il conteggio del flusso stimato dal tracker con il
  * conteggio reale presente nel tracker reale passato come parametro. L'errore totale sarà dato dalla somma
- * dei singoli errori / COLONNE_TRACKER  e la fitness totale sara data da fitness= -errore.
- * Infine la fitness viene salvata in popolazione.fitness[k], cioè all'interno della struttura popolazione
+ * dei singoli errori / COLONNE_TRACKER  e la fitness totale sarà data da fitness = -errore.
+ * Infine la fitness viene salvata in popolazione->fitness[k], cioè all'interno della struttura popolazione
  * andiamo a contenere il valore di fitness del k-esimo cromosoma.
  * --------------------------------------------------------------------------------------------------------/
 */
@@ -359,7 +359,7 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
     vengono persi*/
     double t = 3000000000000.0;
 
-    // Analizziamo il flusso e stimiamo i conteggi dei flussi più frequenti.
+    // Analizziamo il flusso e costruiamo il tracker stimato
     while (fgets(stream, 2048, file)) {
         char *flusso = strtok(stream, ",");
         heavyTracker(flusso, parametri->b_hk, parametri->b, parametri->c, parametri->q, parametri->gamma, t, tracker);
@@ -388,14 +388,14 @@ double calcola_fitness(unsigned int *cromosoma, int k, Popolazione *popolazione,
 
 
 /*
- * -------------------------------------------SUS()-------------------------------------------------------/
+ * -------------------------------------------sus()-------------------------------------------------------/
  * Funzione che prende in input un puntatore alla struttura Popolazione.
- * La funzione SUS calcola il valore di fitness totale associato alla popolazione e inizializza un intervallo
+ * La funzione sus calcola il valore di fitness totale associato alla popolazione e inizializza un intervallo
  * definitio come F/K in cui F è la fitness totale e K la dimensione della popolazione (quanti cromosomi
  * contiene).
  * Ora l'array fitness della struttura Popolazione viene modificato in modo che alla k'esima cella contenga
  * la fitness totale avuta fino a quel momento.
- * Viene scelto un parametro r nell'intervallo [o, F/K] da cui partire e di volta in volta verifichiamo se
+ * Viene scelto un parametro r nell'intervallo [0, F/K] da cui partire e di volta in volta verifichiamo se
  * r è minore della cella k-esima di fitness. Se è minore si aggiunge il cromosoma k-esimo alla nuova
  * popolazione e si aggiorna il valore  r = r + intervallo, altrimenti si incrementa di 1 la variabile k
  * per vedere se inserendo il valore di fitness del cromosoma k-esimo ricadiamo nell'intervallo r.
@@ -453,8 +453,10 @@ Popolazione* sus(Popolazione* popolazione) {
 
 /*
  * -------------------------------------------swap()-----------------------------------------------------/
- * Funzione che prende in input 2 cromosomi, una cella di partenza e una cella di fine e fa lo swap delle
- * celle che si trovano nell'intervallo (start; end) per i due cromosomi.
+ * Funzione che prende in input 2 cromosomi, e due indici "start" ed "end" e fa lo swap delle
+ * celle che si trovano nell'intervallo [start; end] per i due cromosomi. Inlcudiamo anche gli estremi in
+ * quanto il valore "end" può avere al massimo dimensione = [SIZE_CROMOSOMA - 1] e dunque se includiamo
+ * anche l'elemento che corrisponde alla cella cromosoma[end] non andiamo in overflow.
  * --------------------------------------------------------------------------------------------------------/
 */
 void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int end) {
@@ -476,7 +478,7 @@ void swap(unsigned int *cromosoma1, unsigned int *cromosoma2 , int start, int en
 /*
  * -------------------------------------------crossover()---------------------------------------------------/
  * Funzione che prende in input un puntatore alla struttura Popolazione, analizza tutti i cromosomi che ne
- * fanno parte e li campione con P = 0.7. Prende successivamente a 2 a 2 i cromosomi dal campione, generi
+ * fanno parte e li campione con P = 0.7. Prende successivamente a 2 a 2 i cromosomi dal campione, genera
  * due numeri casuali start ed end (se start > end si fa lo swap) e richiamiamo la funzione swap, precedentemente
  * descritta, per i 2 cromosomi. Per ulteriori dettagli consultare i commenti presenti nel codice.
  * --------------------------------------------------------------------------------------------------------/
@@ -491,14 +493,15 @@ void crossover(Popolazione* popolazione) {
 
     int p = 0;  //Tiene conto se ho già preso il primo cromosoma o se devo ancora prenderlo
     int k = 0;  // Tiene conto della riga in cui risiedeva il primo cromosoma estratto
-    unsigned int *cromosoma1 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
+
+    unsigned int *cromosoma1 = malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma1 == NULL) {
         printf("Malloc fallita");
         tracker_unit_free(tk_reale);
         exit(EXIT_FAILURE);
     }
 
-    unsigned int *cromosoma2 = (unsigned int *) malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
+    unsigned int *cromosoma2 = malloc(SIZE_CROMOSOMA * sizeof(unsigned int));
     if (cromosoma2 == NULL) {
         printf("Malloc fallita");
         tracker_unit_free(tk_reale);
@@ -551,9 +554,9 @@ void crossover(Popolazione* popolazione) {
 
 /*
  * -------------------------------------------mutazione()---------------------------------------------------/
- * Funzione che prende in input un puntatore alla struttura Popolazione e analizza cromosoma per cromosoma
- * tutti i valori che assumono. Campiona un valore di un cromosoma con P = 1/SIZE_CROMOSOMA e se viene
- * soddisfatta questa probabilità facciamo lo swap del bit (se = 0 allora diventa 1, se = 1 diventa 0).
+ * Funzione che prende in input un puntatore alla struttura Popolazione. Campiona una cella di un cromosoma
+ * con P = 1/SIZE_CROMOSOMA e se viene soddisfatta questa probabilità facciamo lo swap del bit (se = 0 allora
+ * diventa 1, se = 1 diventa 0). Questa operazione viene ripetuta per ogni cromosoma presente in popolazione.
  * --------------------------------------------------------------------------------------------------------/
 */
 void mutazione(Popolazione *popolazione) {
@@ -578,23 +581,9 @@ void mutazione(Popolazione *popolazione) {
 }
 
 /*
- * -------------------------------------------mean_fitness()---------------------------------------------------/
- * Funzione che prende in input un puntatore alla struttura Popolazione e restituisce la fitness media dei
- * cromosomi che la compongono.
- * --------------------------------------------------------------------------------------------------------/
-*/
-double mean_fitness(Popolazione *popolazione) {
-    double sum = 0;
-    for (int i = 0; i < SIZE_POPOLAZIONE; i++) {
-        sum = sum + popolazione->fitness[i];
-    }
-    return sum / SIZE_POPOLAZIONE;
-}
-
-/*
  * -------------------------------------------genetic_algorithm()---------------------------------------------------/
- * Funzione che sviluppa l'algoritmo genetico. Per ulteriori dettagli confrontare la documentazione.
- * Laa funzione restituisce in output un puntatore alla struttura Parametri che contiene i parametri associati
+ * Funzione che implementa l'algoritmo genetico. Per ulteriori dettagli confrontare la documentazione.
+ * La funzione restituisce in output un puntatore alla struttura Parametri che contiene i parametri associati
  * al cromosoma che ha fitness maggiore.
  * -----------------------------------------------------------------------------------------------------------------/
 */
@@ -602,7 +591,7 @@ Parametri* genetic_algotithm() {
     // Inizializzo la popolazione con bit casuali.
     Popolazione* popolazione = inizializza_popolazione();
 
-    // Calcolo per ogni FPi la sua frequenza reale.
+    // Calcolo per ogni FPi il suo conteggio reale.
     Tracker_unit* tk_reale = frequenza_reale();
 
     unsigned int cromosma[SIZE_CROMOSOMA];
@@ -614,7 +603,7 @@ Parametri* genetic_algotithm() {
     // In media riesco a trovare una soluzione accettabile già dopo 25/50 iterazioni (Vedere documentazione)
     while (k < 25) {
 
-        // Calcolo del fitness per ogni cromosoma presente nella popolazione
+        // Calcolo del fitness per ogni cromosoma presente nella popolazione:
         for (int i = 0; i < SIZE_POPOLAZIONE; i++) {
             // Estraggo il cromosoma dalla popolazione
             for (int j = 0; j < SIZE_CROMOSOMA; j++) {
@@ -632,10 +621,10 @@ Parametri* genetic_algotithm() {
             }
         }
 
-        // Applico la funzione SUS per vedere quale cromosoma della popolazione sopravvive
+        // Applico la funzione sus per vedere quali cromosomi della popolazione sopravvivono
         popolazione = sus(popolazione);
 
-        // Applico il crossover per andare a combinare con P = P_CROSSOVER i cromosomi tra loro
+        // Applico la funzione di crossover per andare a combinare con P = P_CROSSOVER i cromosomi tra loro
         crossover(popolazione);
 
         // Applico la mutazione per modificare con P = P_MUTAZIONE i cromosomi
