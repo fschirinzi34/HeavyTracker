@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "genetic_algorithm.h"
 #include "heavytracker.h"
@@ -16,6 +17,9 @@
  * --------------------------------------------------------------------------------------------------------/
 */
 int main(int argc, char **argv) {
+
+    long int seed = time(NULL);
+    srand(seed);
 
     // Cerchiamo i migliori parametri con l'algoritmo genetico
     Parametri* parametri= genetic_algotithm();
