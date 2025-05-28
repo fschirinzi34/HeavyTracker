@@ -2,11 +2,11 @@
 
 ## Istruzioni di utilizzo:
 
-1. Scaricare la repository Git Hub contenente l'intero progetto:
+1. Scaricare la repository Git Hub contenente l'intero progetto;
 
 2. Scaricare il file "Dataset-Unicauca-Version2-87Atts.csv" al seguente [link ][link_kaggle] 
    e attribuirgli il nome "Dat1.csv". Inoltre creare un altro file che contiene le prime 
-   100000 righe di Dat1.csv e denominarlo Dat3.csv.
+   100000 righe di "Dat1.csv" e denominarlo "Dat3.csv".
    Per effettuare i test è necessario scaricare la cartella del framework Unity presente al seguente [link ][link_Unity]
 
 3. Compilare dando il seguente comando:
